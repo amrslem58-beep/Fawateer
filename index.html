@@ -34,9 +34,12 @@ const PROMPT='This is a photo of ONE sales invoice (Arabic). Reply with ONLY JSO
 function b64(file){return new Promise((ok,no)=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.85).split(',')[1])};im.onerror=no;im.src=u})}
 const ST={async set(k,v){localStorage.setItem(k,JSON.stringify(v))},async del(k){localStorage.removeItem(k)},async list(){const r=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^(day|arc)-/.test(k))try{r.push({k,v:JSON.parse(localStorage.getItem(k))})}catch(e){}}return r}};
 const sample={async json(prompt,o){if(!KEY_)throw Object.assign(new Error('key'),{code:'not_granted'});
- const d=await b64(o.images);let r;try{r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODEL+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':KEY_},body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:'image/jpeg',data:d}}]}],generationConfig:{responseMimeType:'application/json',temperature:0}})})}catch(e){throw Object.assign(e,{code:'net'})}
- if(r.status==429)throw Object.assign(new Error('rl'),{code:'rate_limited'});if([400,401,403].includes(r.status))throw Object.assign(new Error('key'),{code:'not_granted'});if(!r.ok)throw new Error(r.status);
- const j=await r.json();return JSON.parse(j.candidates[0].content.parts[0].text.replace(/```json|```/g,'').trim())}};
+ const d=await b64(o.images);let last=null;
+ for(const m of ['gemini-flash-lite-latest','gemini-flash-latest']){let r;try{r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':KEY_},body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:'image/jpeg',data:d}}]}],generationConfig:{responseMimeType:'application/json',temperature:0}})})}catch(e){throw Object.assign(e,{code:'net',detail:'مفيش اتصال بالنت أو الطلب اتحجب'})}
+  if(r.ok){const j=await r.json(),p=j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts,t=p?p.map(x=>x.text||'').join(''):'';if(!t)throw Object.assign(new Error('empty'),{detail:'رد فاضي '+((j.promptFeedback&&j.promptFeedback.blockReason)||'')});return JSON.parse(t.replace(/```json|```/g,'').trim())}
+  const tx=await r.text().catch(()=>'');last=Object.assign(new Error('http'),{status:r.status,detail:'HTTP '+r.status+' '+tx.replace(/\s+/g,' ').slice(0,150),code:r.status==429?'rate_limited':([401,403].includes(r.status)||(r.status==400&&/API key|key not valid/i.test(tx)))?'not_granted':'http'});
+  if(![404,429,500,503].includes(r.status))break}
+ throw last}};
 let PEND=null;
 const dl={async save(o){const f=new File([o.data],o.filename,{type:o.data.type});PEND=f;
  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]});msg('اتبعتت ✓');return}catch(e){if(e&&e.name=='AbortError'){msg('اتلغت المشاركة');return}}msg('','<button class="big" onclick="sharePend()">📤 اضغط لمشاركة الصورة</button>');return}
@@ -57,15 +60,15 @@ function init(){const hm=location.hash.match(/k=([^&]+)/);if(hm){KEY_=decodeURIC
 function save(){try{localStorage.setItem('day-'+KEY,JSON.stringify(S))}catch(e){$('#sv').textContent='فشل الحفظ'}}
 const isum=v=>(v.items||[]).reduce((a,i)=>a+i.qty*i.price,0),T=v=>+v.total||isum(v),N=v=>v.after!=null&&v.after!==''?+v.after:T(v);
 function calc(){let t=0,n=0,vo=0,aj=0;S.inv.forEach(v=>{t+=T(v);n+=N(v);vo+=+v.voda||0;aj+=+v.ajl||0});const ex=S.exp.reduce((a,e)=>a+(+e.amt||0),0);return{t,disc:t-n,n,vo,aj,cash:n-vo-aj,ex,fin:n-vo-aj-ex}}
-$('#fi').onchange=async e=>{const L=[...e.target.files];e.target.value='';let i=0,bad=[],dup=[];
+$('#fi').onchange=async e=>{const L=[...e.target.files];e.target.value='';let i=0,bad=[],dup=[],lastE='';
  for(const file of L){i++;$('#st').textContent='بقرا الصورة '+i+' من '+L.length+'…';
   try{const r=await sample.json(PROMPT,{images:file});
    if(r.error||!Array.isArray(r.items)){bad.push(i);continue}
    if(S.inv.some(x=>x.no===r.no)){dup.push(r.no);continue}
    S.inv.push({no:r.no,time:r.time||'',customer:r.customer||'',items:r.items,total:r.total,after:r.after,paid:r.paid,debt:r.debt||0,voda:0});
    S.inv.sort((a,b)=>a.no-b.no);save();render();
-  }catch(er){if(['not_granted','sampling_disabled','rate_limited'].includes(er.code)){$('#st').textContent=er.code=='rate_limited'?'استنى شوية وكمّل':'المفتاح مش شغال — راجع ⚙ الإعدادات';return}bad.push(i)}}
- $('#st').textContent='خلص. '+(dup.length?'فواتير مكررة اتجاهلت: '+dup.join('، ')+'. ':'')+(bad.length?'صور مقرتش: '+bad.join('، '):'')};
+  }catch(er){if(['not_granted','sampling_disabled','rate_limited'].includes(er.code)){$('#st').textContent=er.code=='rate_limited'?'استنى شوية وكمّل':'المفتاح مش شغال — راجع ⚙ الإعدادات'+(er.detail?' ('+er.detail+')':'');return}lastE=er.detail||er.message;bad.push(i)}}
+ $('#st').textContent='خلص. '+(dup.length?'فواتير مكررة اتجاهلت: '+dup.join('، ')+'. ':'')+(bad.length?'صور مقرتش: '+bad.join('، ')+(lastE?' — السبب: '+lastE:''):'')};
 $('#t1').onclick=()=>{tab=1;render()};$('#t2').onclick=()=>{tab=2;render()};$('#t3').onclick=()=>{tab=3;render()};
 function render(){fix();$('#t1').className=tab==1?'':'g';$('#t2').className=tab==2?'':'g';$('#t1').textContent='الفواتير ('+S.inv.length+')';$('#t3').className=tab==3?'':'g';tab==1?inv():tab==2?rep():arc()}
 function inv(){const c=calc();let h='';
