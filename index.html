@@ -31,7 +31,7 @@ const ed=(a,b)=>{if(Math.abs(a.length-b.length)>1)return 9;const d=[];for(let i=
 function canon(n){const c=String(n).replace(/[_\u0640]/g,' ').replace(/\s+/g,' ').trim(),k=k2(c),all=[...CAT,...S.inv.flatMap(v=>v.items.map(i=>i.name)),...(S.load||[]).map(i=>i.name),...(S.cnt||[]).map(i=>i.name)];for(const a of all){const b=k2(a);if(b==k||(Math.min(b.length,k.length)>=8&&(b.startsWith(k)||k.startsWith(b)))||(k.length>=7&&ed(b,k)<=1))return a}return c}
 function fix(){const ks=CAT.map(nk);S.inv.forEach(v=>{v.items.forEach(i=>i.name=canon(i.name));v.items=v.items.filter(i=>{const k=nk(i.name);return ks.includes(k)||!v.items.some(o=>o!==i&&nk(o.name)!=k&&nk(o.name).includes(k))})});['load','cnt'].forEach(t=>S[t]&&S[t].forEach(i=>i.name=canon(i.name)))}
 const PROMPT='This is a photo of ONE sales invoice (Arabic). Reply with ONLY JSON: {"no":number,"time":"HH:MM","customer":string,"items":[{"name":string,"qty":number,"price":number}],"total":number,"after":number,"paid":number,"debt":number}. total = الاجمالي, after = بعد الخصم, paid = مدفوع, debt = المديونيه السابقة (0 if none). Copy Arabic names exactly as printed. Use western digits. If not an invoice reply {"error":"not invoice"}. A product name can wrap onto two lines (e.g. ارز كنافه_بسبوسه_مك / سرات): that is ONE item, join the lines and replace underscores with spaces. When a printed name matches one of these, use it exactly: '+CAT.join(', ')+'.';
-function b64(file){return new Promise((ok,no)=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.85).split(',')[1])};im.onerror=no;im.src=u})}
+function b64(file){return new Promise((ok,no)=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.85).split(',')[1])};im.onerror=()=>no(Object.assign(new Error('x'),{detail:'الصورة معرفتش تتفتح'}));im.src=u})}
 const ST={async set(k,v){localStorage.setItem(k,JSON.stringify(v))},async del(k){localStorage.removeItem(k)},async list(){const r=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^(day|arc)-/.test(k))try{r.push({k,v:JSON.parse(localStorage.getItem(k))})}catch(e){}}return r}};
 const sample={async json(prompt,o){if(!KEY_)throw Object.assign(new Error('key'),{code:'not_granted'});
  const d=await b64(o.images);let last=null;
@@ -56,14 +56,14 @@ function init(){const hm=location.hash.match(/k=([^&]+)/);if(hm){KEY_=decodeURIC
  $('#gs').onclick=()=>{const c=$('#cfg');c.style.display=c.style.display=='block'?'none':'block';$('#gk').value=KEY_;$('#gm').value=MODEL;bkNote()};
  $('#gsv').onclick=()=>{KEY_=$('#gk').value.trim();MODEL=$('#gm').value.trim()||'gemini-2.5-flash';localStorage.setItem('gk',KEY_);localStorage.setItem('gm',MODEL);$('#cfg').style.display='none';$('#sv').textContent='اتحفظ'};
  if(!KEY_)$('#cfg').style.display='block';
- $('#sv').textContent='البيانات بتتحفظ على التليفون ده'+(Date.now()-(+localStorage.getItem('lastbk')||0)>864e5?' · ⚠ خد نسخة احتياطية من ⚙':'');render()}
+ $('#sv').textContent='نسخة 5 · البيانات بتتحفظ على التليفون ده'+(Date.now()-(+localStorage.getItem('lastbk')||0)>864e5?' · ⚠ خد نسخة احتياطية من ⚙':'');render()}
 function save(){try{localStorage.setItem('day-'+KEY,JSON.stringify(S))}catch(e){$('#sv').textContent='فشل الحفظ'}}
 const isum=v=>(v.items||[]).reduce((a,i)=>a+i.qty*i.price,0),T=v=>+v.total||isum(v),N=v=>v.after!=null&&v.after!==''?+v.after:T(v);
 function calc(){let t=0,n=0,vo=0,aj=0;S.inv.forEach(v=>{t+=T(v);n+=N(v);vo+=+v.voda||0;aj+=+v.ajl||0});const ex=S.exp.reduce((a,e)=>a+(+e.amt||0),0);return{t,disc:t-n,n,vo,aj,cash:n-vo-aj,ex,fin:n-vo-aj-ex}}
 $('#fi').onchange=async e=>{const L=[...e.target.files];e.target.value='';let i=0,bad=[],dup=[],lastE='';
  for(const file of L){i++;$('#st').textContent='بقرا الصورة '+i+' من '+L.length+'…';
   try{const r=await sample.json(PROMPT,{images:file});
-   if(r.error||!Array.isArray(r.items)){bad.push(i);continue}
+   if(r.error||!Array.isArray(r.items)){lastE='الرد مش فاتورة: '+JSON.stringify(r).slice(0,120);bad.push(i);continue}
    if(S.inv.some(x=>x.no===r.no)){dup.push(r.no);continue}
    S.inv.push({no:r.no,time:r.time||'',customer:r.customer||'',items:r.items,total:r.total,after:r.after,paid:r.paid,debt:r.debt||0,voda:0});
    S.inv.sort((a,b)=>a.no-b.no);save();render();
