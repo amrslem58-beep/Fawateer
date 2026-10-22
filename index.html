@@ -69,7 +69,7 @@ function init(){const hm=location.hash.match(/k=([^&]+)/);if(hm){KEY_=decodeURIC
  $('#gs').onclick=()=>{const c=$('#cfg');c.style.display=c.style.display=='block'?'none':'block';$('#gk').value=KEY_;$('#gm').value=MODEL;bkNote()};
  $('#gsv').onclick=()=>{KEY_=$('#gk').value.trim();MODEL=$('#gm').value.trim()||'gemini-2.5-flash';localStorage.setItem('gk',KEY_);localStorage.setItem('gm',MODEL);$('#cfg').style.display='none';$('#sv').textContent='اتحفظ'};
  if(!KEY_)$('#cfg').style.display='block';
- $('#sv').textContent='نسخة 10 · البيانات بتتحفظ على التليفون ده'+(Date.now()-(+localStorage.getItem('lastbk')||0)>864e5?' · ⚠ خد نسخة احتياطية من ⚙':'');render()}
+ $('#sv').textContent='نسخة 11 · البيانات بتتحفظ على التليفون ده'+(Date.now()-(+localStorage.getItem('lastbk')||0)>864e5?' · ⚠ خد نسخة احتياطية من ⚙':'');render()}
 function save(){try{localStorage.setItem('day-'+KEY,JSON.stringify(S));ledSave()}catch(e){$('#sv').textContent='فشل الحفظ'}}
 const isum=v=>(v.items||[]).reduce((a,i)=>a+i.qty*i.price,0),T=v=>+v.total||isum(v),N=v=>v.after!=null&&v.after!==''?+v.after:T(v);
 function calc(){let t=0,n=0,vo=0,aj=0;S.inv.forEach(v=>{t+=T(v);n+=N(v);vo+=+v.voda||0;aj+=+v.ajl||0});const ex=S.exp.reduce((a,e)=>a+(+e.amt||0),0);let zy=0,kh=0;S.inv.forEach(v=>{const d=dz(v).diff;if(d>0.005)zy+=d;else if(d<-0.005)kh-=d});return{t,disc:t-n,n,vo,aj,cash:n-vo-aj,ex,fin:n-vo-aj-ex,zy,kh}}
@@ -124,14 +124,15 @@ async function shot(fn,name){let b=null;msg('بجهز الصورة بدقة عا
  if(!b){msg('معرفتش أطلّع الصورة — جرب تاني');return}
  msg('الصورة جاهزة ('+Math.round(b.size/1024)+' ك.ب)');LAST={b,name};try{await dl.save({filename:name,data:b});if(typeof PEND==='undefined')msg('تمام ✓')}catch(e){msg('','<div>'+(e&&e.code=='declined'?'اتلغى الحفظ. دوس «حفظ» في النافذة اللي بتظهر.':'فشل الحفظ'+(e&&e.code?' ('+e.code+')':''))+'</div>'+RB)}}
 function tx(x,s,a,b,o){o=o||{};x.font=(o.b?'bold ':'')+(o.s||18)+'px '+FN;x.fillStyle=o.c||'#1b2733';x.textAlign=o.a||'center';x.textBaseline='middle';x.fillText(String(s),a,b,o.w)}
-function hdr(x,W,t,sub){const g=x.createLinearGradient(0,0,W,0);g.addColorStop(0,'#12304f');g.addColorStop(1,'#0f766e');x.fillStyle=g;x.fillRect(0,0,W,160);tx(x,t,W-30,38,{s:30,b:1,c:'#fff',a:'right'});tx(x,sub,30,38,{s:16,c:'#cfe8e4',a:'left'});x.strokeStyle='rgba(255,255,255,.25)';x.lineWidth=1;x.beginPath();x.moveTo(30,68);x.lineTo(W-30,68);x.stroke();
- if(S.co){const im=logoImg(S.co),ok=im&&im.complete&&im.naturalWidth;x.font='bold 32px '+FN;const nw=Math.min(x.measureText(S.co).width,W*.5);
-  if(ok){const k=Math.min(150/im.naturalWidth,66/im.naturalHeight),lw=im.naturalWidth*k,lh=im.naturalHeight*k,cw=lw+16,gw=nw+16+cw,L=(W-gw)/2,cx=L+nw+16;rr(x,cx,72,cw,84,12,'#fff');x.drawImage(im,cx+8,72+(84-lh)/2,lw,lh);tx(x,S.co,cx-16,114,{s:32,b:1,c:'#fff',a:'right',w:nw})}
-  else tx(x,S.co,W/2,114,{s:34,b:1,c:'#fff',a:'center',w:W*.8})}
- x.save();x.translate(0,50)}
+function hdr(x,W,t,sub){x.fillStyle='#fff';x.fillRect(0,0,W,150);const g=x.createLinearGradient(0,0,W,0);g.addColorStop(0,'#12304f');g.addColorStop(1,'#0f766e');x.fillStyle=g;x.fillRect(0,150,W,56);
+ tx(x,t,W-30,179,{s:28,b:1,c:'#fff',a:'right'});tx(x,sub,30,179,{s:16,c:'#cfe8e4',a:'left'});
+ if(S.co){const im=logoImg(S.co),ok=im&&im.complete&&im.naturalWidth;
+  if(ok){const k=Math.min(380/im.naturalWidth,96/im.naturalHeight),lw=im.naturalWidth*k,lh=im.naturalHeight*k;x.drawImage(im,(W-lw)/2,8+(96-lh)/2,lw,lh);tx(x,S.co,W/2,126,{s:24,b:1,c:'#12304f',a:'center',w:W*.8})}
+  else tx(x,S.co,W/2,76,{s:44,b:1,c:'#12304f',a:'center',w:W*.8})}
+ x.save();x.translate(0,96)}
 function out(cv,n){cv.toBlob(async b=>{try{await dl.save({filename:n,data:b})}catch(e){}})}
 async function png(){if(!dl){msg('التحميل مش متاح هنا');return}
- await shot(()=>{const c=calc(),W=900,I=S.inv.length,E=S.exp.length,y1=414+(E?34+E*38+20:0),H=y1+extraH()+110,[cv,x]=mk(W,H);
+ await shot(()=>{const c=calc(),W=900,I=S.inv.length,E=S.exp.length,y1=414+(E?34+E*38+20:0),H=y1+extraH()+156,[cv,x]=mk(W,H);
  hdr(x,W,'تقرير يوم '+KEY,I+' فاتورة'+(S.rep?' · المندوب: '+S.rep:''));
  const card=(lab,val,i,row,col)=>{const l=W-20-203-i*219,t=130+row*92;rr(x,l,t,203,78,12,'#fff');rr(x,l+197,t,6,78,3,col);tx(x,lab,l+185,t+24,{s:15,c:'#64748b',a:'right'});tx(x,f(val),l+185,t+53,{s:26,b:1,c:'#12304f',a:'right',w:180})};
  card('الإجمالي',c.t,0,0,'#12304f');card('الخصم',c.disc,1,0,'#b45309');card('الصافي',c.n,2,0,'#0f766e');card('عدد الفواتير',I,3,0,'#64748b');
@@ -171,7 +172,7 @@ function sig(x,W,H){const s=46,y=H-s-14;x.save();x.strokeStyle='#cbd5e1';x.lineW
 function setAll(k,t){const v=S.inv[k],o=t=='voda'?'ajl':'voda',a=N(v);if((+v[t]||0)==a)v[t]=0;else{v[t]=a;v[o]=0}save();render()}
 async function png2(){if(!dl){msg('التحميل مش متاح هنا');return}
  await shot(()=>{const st=stk(),sm={};st.forEach(r=>sm[r[0]]=r);const names=[];S.inv.forEach(v=>v.items.forEach(i=>{const n=String(i.name).trim();if(!names.includes(n))names.push(n)}));st.forEach(r=>{if(!names.includes(r[0]))names.push(r[0])});
- const q=(v,n)=>v.items.filter(i=>String(i.name).trim()==n).reduce((a,i)=>a+(+i.qty||0),0),M=S.inv.length||1,R=names.length,cw=100,IW=260,SW=96,cols=st.length?['تحميل','مبيع','متوقع','جرد','الفرق']:['مبيع'],NS=cols.length,RH=38,HH=96,y0=130,W=Math.max(760,40+IW+NS*SW+cw*M),H=y0+HH+(R+7)*RH+140,[cv,x]=mk(W,H),cx=j=>W-20-IW-cw*j-cw/2,sx=i=>W-20-IW-cw*M-SW*i-SW/2,fz=n=>n?f0(n):'–';
+ const q=(v,n)=>v.items.filter(i=>String(i.name).trim()==n).reduce((a,i)=>a+(+i.qty||0),0),M=S.inv.length||1,R=names.length,cw=100,IW=260,SW=96,cols=st.length?['تحميل','مبيع','متوقع','جرد','الفرق']:['مبيع'],NS=cols.length,RH=38,HH=96,y0=130,W=Math.max(760,40+IW+NS*SW+cw*M),H=y0+HH+(R+7)*RH+186,[cv,x]=mk(W,H),cx=j=>W-20-IW-cw*j-cw/2,sx=i=>W-20-IW-cw*M-SW*i-SW/2,fz=n=>n?f0(n):'–';
  hdr(x,W,'شيت العملاء — '+KEY,M+' عميل · '+R+' صنف'+(S.rep?' · المندوب: '+S.rep:''));
  rr(x,20,y0,W-40,HH,10,'#12304f');tx(x,'الصنف',W-35,y0+HH-24,{s:19,b:1,c:'#fff',a:'right'});cols.forEach((c,i)=>tx(x,c,sx(i),y0+HH/2,{s:17,b:1,c:'#fbbf24',w:SW-8}));
  S.inv.forEach((v,j)=>{const L=[''];String(v.customer).split(' ').forEach(w=>{x.font='bold 16px '+FN;const l=L[L.length-1];if(l&&x.measureText(l+' '+w).width>cw-12&&L.length<3)L.push(w);else L[L.length-1]=l?l+' '+w:w});L.forEach((t,i)=>tx(x,t,cx(j),y0+16+i*21,{s:16,b:1,c:'#fff',w:cw-8}));tx(x,'#'+v.no,cx(j),y0+HH-12,{s:14,c:'#9fb3c8'})});
